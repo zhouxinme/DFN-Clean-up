@@ -124,7 +124,7 @@ p.c_e = 1.2669e3;              % Fixed electrolyte concentration for SPM, [mol/m
 
 %% Cutoff voltages
 p.volt_max = 3.6;
-p.volt_min = -1;   %2.0;
+p.volt_min = 2.0;
 
 %% Discretization parameters
 % Discrete time step
@@ -149,5 +149,5 @@ p.delta_x_s = 1 / p.Nxs;
 p.delta_x_p = 1 / p.Nxp;
 
 %% Health
-p.i_0sd = 4e-5; %1.5e-6;   % Exchange current density, [A/m^2], Ramadass: 1.5e-6; Joel: 4e-8
+p.i_0sd = 1.5e-6;   % Exchange current density, [A/m^2], Ramadass: 1.5e-6; Joel: 4e-8
 p.Urefsd = 0.4;   % Reference potential of the side reaction, [V], from Ramadass et al 2004, JES

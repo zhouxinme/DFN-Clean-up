@@ -6,20 +6,22 @@ function [f_x, f_z, g_x, g_z] = jac_dfn_pre_zhouxinme2(p)
 
 
 %% Parse out states
-Ncsn = p.PadeOrder * (p.Nxn-1);
-Ncsp = p.PadeOrder * (p.Nxp-1);
-Nce = p.Nx - 3;
-Nc = Ncsn+Ncsp+Nce;
-Nn = p.Nxn - 1;
-Np = p.Nxp - 1;
-Nnp = Nn+Np;
-Nx = p.Nx - 3;
-Nz = 3*Nnp + Nx + Nn;
+
+% Vector lengths
+Ncsn = p.PadeOrder * (p.Nxn-1);   % Length of c_{s,n}, (n_r)*(n_x).
+Ncsp = p.PadeOrder * (p.Nxp-1);   % Length of c_{s,p}, (n_r)*(n_x).
+Nce = p.Nx - 3;   % Length of c_e.
+Nc = Ncsn+Ncsp+Nce;   % Length of all concentration states.
+Nn = p.Nxn - 1;   % # of nodes in the anode.
+Np = p.Nxp - 1;   % # of nodes in the cathode.
+Nnp = Nn+Np;   % # of nodes in the electrodes.
+
+Nx = Ncsn + Ncsp + Nce + 1;   % # of states in x.
+Nz = 3*Nnp + Nce + Nn;   % # of states in z.
 
 ind_csn = 1:Ncsn;
 ind_csp = Ncsn+1:Ncsn+Ncsp;
 
-ind_cs = 1:Ncsn+Ncsp;
 ind_ce = Ncsn+Ncsp+1:Nc;
 
 ind_phi_s_n = 1:Nn;
@@ -28,17 +30,17 @@ ind_phi_s_p = Nn+1:Nnp;
 ind_ien = Nnp+1:Nnp+Nn;
 ind_iep = Nnp+Nn+1:2*Nnp;
 
-ind_phi_e = 2*Nnp+1 : 2*Nnp+Nx;
+ind_phi_e = 2*Nnp+1 : 2*Nnp+Nce;
 
-ind_jp = 2*Nnp+Nx+1 : 2*Nnp+Nx+Np;
+ind_jp = 2*Nnp+Nce+1 : 2*Nnp+Nce+Np;
 
-ind_jn1 = 2*Nnp+Nx+Np+1 : 2*Nnp+Nx+Nn+Np;
-ind_jsd = 2*Nnp+Nx+Nn+Np+1 : 2*Nnp+Nx+2*Nn+Np;
+ind_jn1 = 2*Nnp+Nce+Np+1 : 3*Nnp+Nce;
+ind_jsd = 3*Nnp+Nce+1 : 3*Nnp+Nce+Nn;
 
 %% Preallocate Jacobian
-f_x = zeros(Nc+1);
-f_z = zeros(Nc+1,Nz);
-g_x = zeros(Nz,Nc+1);
+f_x = zeros(Nx);
+f_z = zeros(Nx,Nz);
+g_x = zeros(Nz,Nx);
 g_z = zeros(Nz);
 
 %% Li Diffusion in Solid Phase: c_s(x,r,t)
