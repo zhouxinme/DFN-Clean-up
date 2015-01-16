@@ -19,6 +19,37 @@ Nnp = Nn+Np;   % # of nodes in the electrodes.
 Nx = Ncsn + Ncsp + Nce + 1;   % # of states in x.
 Nz = 3*Nnp + Nce + Nn;   % # of states in z.
 
+% Solid Concentration
+c_s_n = x(1:Ncsn);
+c_s_p = x(Ncsn+1:Ncsn+Ncsp);
+
+% Reformat into matrices
+c_s_n_mat = reshape(c_s_n,p.PadeOrder,p.Nxn-1);
+c_s_p_mat = reshape(c_s_p,p.PadeOrder,p.Nxp-1);
+
+% Electrolyte concentration
+c_e = x(Ncsn+Ncsp+1:Nc);
+
+% Temperature
+T = x(end);
+
+% Solid Potential
+phi_s_n = z(1:Nn);
+phi_s_p = z(Nn+1:Nnp);
+
+% Electrolyte Current
+i_en = z(Nnp+1 : Nnp+Nn);
+i_ep = z(Nnp+Nn+1 : 2*Nnp);
+
+% Electrolyte Potential
+phi_e = z(2*Nnp+1:2*Nnp+Nce);
+
+% Molar ionic flux
+jp = z(2*Nnp+Nce+1 : 2*Nnp+Nce+Np);
+
+jn1 = z(2*Nnp+Nce+Np+1 : 3*Nnp+Nce);
+jsd = z(3*Nnp+Nce+1 : 3*Nnp+Nce+Nn);
+
 ind_csn = 1:Ncsn;
 ind_csp = Ncsn+1:Ncsn+Ncsp;
 
@@ -232,10 +263,11 @@ df6pep = -2/p.Faraday*i_0p.*cosh(aFRT*eta_p) * aFRT;
 df6jp = -2/p.Faraday*i_0p.*cosh(aFRT*eta_p) * aFRT*p.R_f_p*p.Faraday - 1;
 
 df6jn1 = -2/p.Faraday*i_0n.*cosh(aFRT*eta_n) * aFRT*p.R_f_n*p.Faraday - 1;   % BV: jn became jn1 when there is jsd
-dfsd6jsd = -p.i_0sd/p.Faraday*exp(-aFRT * eta_sd)*(aFRT)*p.R_f_n*p.Faraday - 1;   % Changed from the form in [Ramadass, 2004] to make the quantity/unit match
+% dfsd6jsd = -p.i_0sd*p.a_s_n*exp(-aFRT * eta_sd)*(aFRT)*p.R_f_n*p.Faraday - 1;
+dfsd6jsd = -p.i_0sd/p.Faraday*exp(-aFRT * eta_sd)*(aFRT)*p.R_f_n*p.Faraday - 1;
 
-dfsd6psn = -p.i_0sd/p.Faraday*exp(-aFRT * eta_sd)*(-aFRT);   % Changed from the form in [Ramadass, 2004] to make the quantity/unit match
-dfsd6pen = -p.i_0sd/p.Faraday*exp(-aFRT * eta_sd)*(aFRT);   % Changed from the form in [Ramadass, 2004] to make the quantity/unit match
+dfsd6psn = -p.i_0sd*p.a_s_n*exp(-aFRT * eta_sd)*(-aFRT);
+dfsd6pen = -p.i_0sd*p.a_s_n*exp(-aFRT * eta_sd)*(aFRT);
 
 % Input into Jacobian
 

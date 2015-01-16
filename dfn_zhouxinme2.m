@@ -1,34 +1,33 @@
 %% Doyle-Fuller-Newman Model
-%   Created May 22, 2012 by Scott Moura
+%   Created May 22, 2012 by Scott Moura; Edited Jan 15th, 2014 by Xin Zhou.
+% 
+% State vectors:
+%  x0 = [c_s_n(:,1); c_s_p(:,1); c_e(:,1); T(1)];
+%  z0 = [phi_s_n(:,1); phi_s_p(:,1); i_en(:,1); i_ep(:,1);...
+%        phi_e(:,1); jp(:,1); jn1(:,1); jsd(:,1)];
 % 
 % Update Log by zhouxinme:
-% Oct 29, 2014 -- Switch between input types
-% Nov 04, 2014 -- Change to use dae_dfn_zhouxinme_health, add
-%                 health-related variables and flag.
-% Jan 07, 2015 -- Let z contains jn1 and jsd, but no jn.
-
+% Jan 15th 2014: Clean up the DFN model.
 
 clc;
 clear;
 tic;
-
-%% Set the modes
-health_flag = 1;   % Whether to consider the health subsystem in dae 
 
 %% Model Construction
 % Electrochemical Model Parameters
 run params_zhouxinme_LiFePO4_health
 
 % Vector lengths
-Ncsn = p.PadeOrder * (p.Nxn-1);
-Ncsp = p.PadeOrder * (p.Nxp-1);
-Nce = p.Nx - 3;
-Nc = Ncsn+Ncsp+Nce;
-Nn = p.Nxn - 1;
-Np = p.Nxp - 1;
-Nnp = Nn+Np;
-Nx = p.Nx - 3;
-Nz = 3*Nnp + Nx;
+Ncsn = p.PadeOrder * (p.Nxn-1);   % Length of c_{s,n}, (n_r)*(n_x).
+Ncsp = p.PadeOrder * (p.Nxp-1);   % Length of c_{s,p}, (n_r)*(n_x).
+Nce = p.Nx - 3;   % Length of c_e.
+Nc = Ncsn+Ncsp+Nce;   % Length of all concentration states.
+Nn = p.Nxn - 1;   % # of nodes in the anode.
+Np = p.Nxp - 1;   % # of nodes in the cathode.
+Nnp = Nn+Np;   % # of nodes in the electrodes.
+
+Nx = Ncsn + Ncsp + Nce + 1;   % # of states in x.
+Nz = 3*Nnp + Nce + Nn;   % # of states in z.
 
 %% Input Signal
 
@@ -37,9 +36,9 @@ IST = 1;
 
 switch IST
     case 1   % Manual Data
-        t = -0.01:p.delta_t:0.2;       % 60*60
+        t = -0.01:p.delta_t:60;       % 60*60
         Iamp = zeros(length(t),1);
-        Iamp(t >= 0) = -0.1;
+        Iamp(t >= 0) = -10;
         % Iamp(t >= (20*60)) = 0;
         % Iamp(t >= 20) = 0;
         % Iamp(t >= 30) = 10;
@@ -78,25 +77,25 @@ c_s_p0 = zeros(p.PadeOrder,1);
 % c_s_p0(1) = csp0 * (-p.R_s_p/3) * (p.R_s_p^4 / (3465 * p.D_s_p^2));
 
 %%%%% Initial condition based on Jordan form
-c_s_n0(3) = csn0;
-c_s_p0(3) = csp0;
+c_s_n0(3) = csn0;   % c_s_n0(3): for 3rd order Pade approximation
+c_s_p0(3) = csp0;   % c_s_p0(3): for 3rd order Pade approximation
 %%%%%
 
 c_s_n = zeros(Ncsn,NT);
 c_s_p = zeros(Ncsp,NT);
 
 c_s_n(:,1) = repmat(c_s_n0, [Nn 1]);
-c_s_p(:,1) = repmat(c_s_p0, [Nn 1]);
+c_s_p(:,1) = repmat(c_s_p0, [Np 1]);
 
 % Electrolyte concentration
-c_e = zeros(Nx,NT);
-c_e(:,1) = p.c_e * ones(Nx,1);
+c_e = zeros(Nce,NT);
+c_e(:,1) = p.c_e * ones(Nce,1);
 
-c_ex = zeros(Nx+4,NT);
-c_ex(:,1) = c_e(1,1) * ones(Nx+4,1);
+c_ex = zeros(Nce+4,NT);   % # of all the nodes in x direction is (p.Nx+1)
+c_ex(:,1) = c_e(1,1) * ones(Nce+4,1);
 
 % Temperature
-T = zeros(NT,1);
+T = zeros(1,NT);   % Uniform distribution of temperature
 T(1) = p.T_amp;
 
 % Solid Potential
@@ -113,12 +112,12 @@ i_en = zeros(Nn,NT);
 i_ep = zeros(Np,NT);
 
 % Electrolyte Potential
-phi_e = zeros(Nx,NT);
+phi_e = zeros(Nce,NT);
 
-% Molar Ionic Flux
+% Molar Ionic Flux in the cathode
 jp = zeros(Np,NT);
 
-% Health: jsd
+% Health: jn1 + jsd = jn; hence do not need an additional state for molar ionic flux in the anode
 jn1 = zeros(Nn,NT);
 jsd = zeros(Nn,NT);
 
@@ -134,7 +133,7 @@ c_avg_p = zeros(Np,NT);
 c_avg_n(:,1) = repmat(csn0, [Nn 1]);
 c_avg_p(:,1) = repmat(csp0, [Np 1]);
 
-SOC = zeros(NT,1);
+SOC = zeros(1,NT);
 SOC(1) = mean(c_avg_n(:,1)) / p.c_s_n_max;
 
 % Overpotential
@@ -142,21 +141,21 @@ eta_n = zeros(Nn,NT);
 eta_p = zeros(Np,NT);
 
 % Constraint Outputs
-c_e_0p = zeros(NT,1);
+c_e_0p = zeros(1,NT);
 c_e_0p(1) = c_ex(1,1);
 
-eta_s_Ln = zeros(NT,1);
+eta_s_Ln = zeros(1,NT);
 eta_s_Ln(1) = phi_s_p(1,1) - phi_e(1,1);
 
 % Voltage
-Volt = zeros(NT,1);
+Volt = zeros(1,NT);
 Volt(1) = phi_s_p(end,1) - phi_s_n(1,1);
 
 % Conservation of Li-ion matter
-nLi = zeros(NT,1);
-nLidot = zeros(NT,1);
+nLi = zeros(1,NT);
+nLidot = zeros(1,NT);
 
-% Stats
+% Stats (Newman method)
 newtonStats.iters = zeros(NT,1);
 newtonStats.relres = cell(NT,1);
 newtonStats.condJac = zeros(NT,1);
@@ -168,8 +167,8 @@ z0 = [phi_s_n(:,1); phi_s_p(:,1); i_en(:,1); i_ep(:,1);...
       phi_e(:,1); jp(:,1); jn1(:,1); jsd(:,1)];
 
 %% Preallocate
-x = zeros(length(x0), NT);
-z = zeros(length(z0), NT);
+x = zeros(Nx, NT);
+z = zeros(Nz, NT);
 
 x(:,1) = x0;
 z(:,1) = z0;
@@ -222,7 +221,7 @@ p.g_z = g_z;
 clear f_x f_z g_x g_z
 
 % Calculate more states
-jsd_cross = zeros(NT,1);
+jsd_cross = zeros(1,NT);
 jn = zeros(Nn,NT);
 
 %% Integrate!
@@ -250,11 +249,11 @@ for k = 1:(NT-1)
     phi_s_p(:,k+1) = z(Nn+1:Nnp, k+1);
     i_en(:,k+1) = z(Nnp+1:Nnp+Nn, k+1);
     i_ep(:,k+1) = z(Nnp+Nn+1:2*Nnp, k+1);
-    phi_e(:,k+1) = z(2*Nnp+1:2*Nnp+Nx, k+1);
+    phi_e(:,k+1) = z(2*Nnp+1:2*Nnp+Nce, k+1);
 
-    jp(:,k+1) = z(2*Nnp+Nx+1:2*Nnp+Nx+Np, k+1);
-    jn1(:,k+1) = z(2*Nnp+Nx+Np+1:2*Nnp+Nx+Nn+Np, k+1);
-    jsd(:,k+1) = z(2*Nnp+Nx+Nn+Np+1:2*Nnp+Nx+2*Nn+Np, k+1);
+    jp(:,k+1) = z(2*Nnp+Nce+1:2*Nnp+Nce+Np, k+1);
+    jn1(:,k+1) = z(2*Nnp+Nce+Np+1:3*Nnp+Nce, k+1);
+    jsd(:,k+1) = z(3*Nnp+Nce+1:3*Nnp+Nce+Nn, k+1);
     
     jn(:,k+1) = jn1(:,k+1) + jsd(:,k+1);
     jsd_cross(k+1) = sum(jsd(:,k+1));
@@ -273,17 +272,17 @@ for k = 1:(NT-1)
     c_avg_p(:,k+1) = y(Nnp+Nn+1 : 2*Nnp);
     SOC(k+1) = mean(c_avg_n(:,k+1)) / p.c_s_n_max;
     
-    c_ex(:,k+1) = y(2*Nnp+1:2*Nnp+Nx+4);
+    c_ex(:,k+1) = y(2*Nnp+1:2*Nnp+Nce+4);
     
-    eta_n(:,k+1) = y(2*Nnp+Nx+4+1 : 2*Nnp+Nx+4+Nn);
-    eta_p(:,k+1) = y(2*Nnp+Nx+4+Nn+1 : 2*Nnp+Nx+4+Nn+Np);
+    eta_n(:,k+1) = y(2*Nnp+Nce+4+1 : 2*Nnp+Nce+4+Nn);
+    eta_p(:,k+1) = y(2*Nnp+Nce+4+Nn+1 : 3*Nnp+Nce+4);
     
-    c_e_0p(k+1) = y(end-4-2*Nn);
-    eta_s_Ln(k+1) = y(end-3-2*Nn);
+    c_e_0p(k+1) = y(3*Nnp+Nce+4+2);
+    eta_s_Ln(k+1) = y(3*Nnp+Nce+4+3);
     
-    Volt(k+1) = y(end-2-2*Nn);
-    nLi(k+1) = y(end-1-2*Nn);
-    nLidot(k+1) = y(end-2*Nn);
+    Volt(k+1) = y(3*Nnp+Nce+4+4);
+    nLi(k+1) = y(3*Nnp+Nce+4+5);
+    nLidot(k+1) = y(3*Nnp+Nce+4+6);
     
     eta_s_n = phi_s_n - phi_e(1:Nn,:);
     eta_s_p = phi_s_p - phi_e(end-Np+1:end, :);
@@ -312,6 +311,3 @@ end
 disp('Simulating Output Vars...');
 simTime = toc;
 fprintf(1,'Simulation Time : %3.2f min\n',simTime/60);
-
-%% Plot Results
-

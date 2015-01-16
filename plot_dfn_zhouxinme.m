@@ -1,6 +1,7 @@
 %% Plot Doyle-Fuller-Newman Model Results
 %   Created May 23, 2012 by Scott Moura
-% close all;
+
+close all;
 
 figure(1)
 clf
@@ -21,11 +22,13 @@ xlim([0,t(end)])
 
 figure(4)
 subplot(2,1,1)
-plot(t,jsd','linewidth',2)
+plot(t,jsd,'linewidth',2)
+xlim([0,t(end)])
 ylabel('J_{sd} every particles')
 xlabel('Time [sec]')
 subplot(2,1,2)
 plot(t,jsd_cross,'linewidth',2)
+xlim([0,t(end)])
 ylabel('J_{sd} collected')
 xlabel('Time [sec]')
 
@@ -34,21 +37,30 @@ subplot(2,1,1)
 plot(t,c_ss_n/p.c_s_n_max,'linewidth',2)
 ylabel('\theta_n')
 xlabel('Time [sec]')
+xlim([t(1),t(end)])
 subplot(2,1,2)
 plot(t,c_ss_p/p.c_s_p_max,'linewidth',2)
 ylabel('\theta_p')
 xlabel('Time [sec]')
+xlim([t(1),t(end)])
 
 figure(6)
 subplot(311)
-plot(jn1')
+plot(t,jn1','linewidth',2)
+xlim([0,t(end)])
 ylabel('jn1')
+xlabel('Time [sec]')
+title('Molar Ion Flux')
 subplot(312)
-plot(jsd')
+plot(t,jsd','linewidth',2)
+xlim([0,t(end)])
 ylabel('jsd')
+xlabel('Time [sec]')
 subplot(313)
-plot(jp')
+plot(t,jp','linewidth',2)
+xlim([0,t(end)])
 ylabel('jp')
+xlabel('Time [sec]')
 
 return
 

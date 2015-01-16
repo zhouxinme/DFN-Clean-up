@@ -2,7 +2,7 @@
 %   Created May 22, 2012 by Scott Moura
 % 
 % Update Log by zhouxinme:
-% Nov 6, 2014 - Change the dae file to _zhouxinme_health; add health_flag
+% Jan 15th 2014: Clean up the DFN model.
 
 function [x_nxtf, z_nxtf, varargout] = cn_dfn_zhouxinme2(x,z,Cur_vec,p)
 
@@ -20,13 +20,7 @@ tol = 1e-6;
 linEqnTol = 1e-6; % Default is 1e-6
 linEqnMaxIter = 100;  % Default is 20
 
-% tol_cs = 1e-4 * 1e-3 * 0.01;
-% tol_ce = 1e-3 * 0.01;
-% tol_ps = 0.01;
-% tol_ie = 0.01;
-% tol_pe = 0.01;
-% tol_jn = 1e-6;
-
+% Length of states x and z
 Nx = length(x);
 Nz = length(z);
 
@@ -56,8 +50,6 @@ if(Cur ~= Cur_prv)
         
         % Newton Iteration
         Delta_z = -(g_z\g);   % Newton's method: x_n+1 = x_n - f(x_n)/f'(x_n); Delta_z = - f(x_n)/f'(x_n).
-%         [LL,UU] = ilu(g_z,struct('type','ilutp','droptol',1e-6,'udiag',1));
-%         [Delta_z,flag] = bicg(g_z,-g,linEqnTol,linEqnMaxIter,LL,UU);
         z_cons(:,idx+1) = z_cons(:,idx) + Delta_z;
         
         % Check stopping criterion
@@ -103,75 +95,11 @@ for idx = 1:(maxIters-1)
     F1_z = p.delta_t/2 * f_z;
     F2_x = g_x;
     F2_z = g_z;
-    
-%     D = sparse(diag(max(abs(g_z),[],2)));
-%     
-%     [Delta_x,flx,rrx,itx,rrvx] = bicg(F1_x,-F1 - F1_z*Delta_z,linEqnTol,linEqnMaxIter);
-%     [Delta_z,flz,rrz,itz,rrvz] = bicg(F2_z,-F2 - F2_x*Delta_x, linEqnTol,linEqnMaxIter);
-%     
-%     if(flx ~= 0)
-%         disp('X: linear solver did not converge')
-%     end
-%     if(flz ~= 0)
-%         disp('Z: linear solver did not converge')
-%     end
-%     
+         
     J = [F1_x, F1_z; F2_x, F2_z];
-    
-    % Check Jacobian against numjac
-%     Janalytic = [p.f_x, p.f_z; g_x, g_z];
-%     
-%     y = [x_nxt(:,idx); z_nxt(:,idx)];
-%     FTY = dae_dfn_numjac(0,y,p);
-%     thresh = eps * ones(length(y),1);
-%     
-%     [Jnum,FAC] = numjac(@(t,y) dae_dfn_numjac(t,y,p), 0, y, FTY, thresh, FAC, 0);
-%     
-%     Jerr = abs(Janalytic - Jnum);
-% 
-%     Jerr(Jerr < 1e-4) = 0;
-%     spy(Jerr)
-%     assignin('base','Janalytic',Janalytic);
-%     assignin('base','Jnum',Jnum);
-%     assignin('base','Jerr',Jerr);
-%     
-%     pause;
-    
-    % 1/ maximum across rows in Jacobian
-%     D = sparse(diag(1./max(abs(J),[],2)));
-%     DJ = D*J;
-%     DF = D*F;
-
-    % Newton Iteration
-%     [LL,UU] = ilu(DJ,struct('type','ilutp','droptol',1e-6,'udiag',1));
-    
+      
+    % Newman's method with y = [x; z]
     Delta_y = -(J\F); 
-    
-%     [Delta_y,fl,rr,it,rrv] = bicg(DJ,-DF,linEqnTol,linEqnMaxIter,LL,UU);
-%     [Delta_y,fl,rr,it,rrv] = gmres(DJ,-DF,[],1e-12,linEqnMaxIter,LL,UU);
-%     [Delta_y,fl(1),rr(1),it(1),rrv{1}] = bicg(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-%     [~,fl(2),rr(2),it(2),rrv{2}] = bicgstab(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-%     [~,fl(3),rr(3),it(3),rrv{3}] = bicgstabl(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-%     [~,fl(4),rr(4),it(4),rrv{4}] = cgs(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-%     [~,fl(5),rr(5),it(5),rrv{5}] = qmr(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-%     [~,fl(6),rr(6),it(6),rrv{6}] = tfqmr(J,-F,linEqnTol,linEqnMaxIter,LL,UU);
-
-%     fl
-%     log10(rr)
-%     rrv
-%     
-%     figure(10)
-%     clf
-%     semilogy(1:length(rrv{1}),rrv{1}./norm(F),'g.');
-%     hold on;
-%     semilogy(1:length(rrv{2}),rrv{2}./norm(F),'m.');
-%     semilogy(1:length(rrv{3}),rrv{3}./norm(F),'c.');
-%     semilogy(1:length(rrv{4}),rrv{4}./norm(F),'r.');
-%     semilogy(1:length(rrv{5}),rrv{5}./norm(F),'b.');
-%     semilogy(1:length(rrv{6}),rrv{6}./norm(F),'k.');
-%     
-%     legend('bicg','bicgstab','bicgstabl','cgs','qmr','tfqmr')
-%     pause;
 
     x_nxt(:,idx+1) = x_nxt(:,idx) + Delta_y(1:Nx);
     z_nxt(:,idx+1) = z_nxt(:,idx) + Delta_y(Nx+1:end);
