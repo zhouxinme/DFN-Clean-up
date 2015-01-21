@@ -36,9 +36,9 @@ IST = 1;
 
 switch IST
     case 1   % Manual Data
-        t = -0.01:p.delta_t:60;       % 60*60
+        t = -0.05:p.delta_t:1;       % 60*60
         Iamp = zeros(length(t),1);
-        Iamp(t >= 0) = -10;
+        Iamp(t >= 0) = -20*2.3;
         % Iamp(t >= (20*60)) = 0;
         % Iamp(t >= 20) = 0;
         % Iamp(t >= 30) = 10;
@@ -66,7 +66,7 @@ NT = length(t);
 
 %% Initial Conditions & Preallocation
 % Solid concentration
-V0 = 3.6;
+V0 = 3.5;
 [csn0,csp0] = init_cs_zhouxinme(p,V0);
 
 c_s_n0 = zeros(p.PadeOrder,1);
@@ -221,8 +221,13 @@ p.g_z = g_z;
 clear f_x f_z g_x g_z
 
 % Calculate more states
-jsd_cross = zeros(1,NT);
 jn = zeros(Nn,NT);
+
+% Average current densities
+Jsd = zeros(1,NT);
+Jn1 = zeros(1,NT);
+Jn = zeros(1,NT);
+Jp = zeros(1,NT);
 
 %% Integrate!
 disp('Simulating DFN Model...');
@@ -256,7 +261,11 @@ for k = 1:(NT-1)
     jsd(:,k+1) = z(3*Nnp+Nce+1:3*Nnp+Nce+Nn, k+1);
     
     jn(:,k+1) = jn1(:,k+1) + jsd(:,k+1);
-    jsd_cross(k+1) = sum(jsd(:,k+1));
+    
+    Jsd(k+1) = sum(jsd(:,k+1))*p.Faraday*p.a_s_n/Nn;
+    Jn1(k+1) = sum(jn1(:,k+1))*p.Faraday*p.a_s_n/Nn;
+    Jn(k+1) = sum(jn(:,k+1))*p.Faraday*p.a_s_n/Nn;
+    Jp(k+1) = sum(jp(:,k+1))*p.Faraday*p.a_s_p/Np;
     
     newtonStats.iters(k+1) = stats.iters;
     newtonStats.relres{k+1} = stats.relres;
